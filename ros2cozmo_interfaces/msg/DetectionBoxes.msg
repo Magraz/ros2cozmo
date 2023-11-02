@@ -1,0 +1,1 @@
+ros2cozmo_interfaces/DetectionBox[] detection_boxes

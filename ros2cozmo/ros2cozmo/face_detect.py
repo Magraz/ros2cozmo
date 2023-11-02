@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import Image
-from ros2cozmo_interfaces.msg import DetectionBox 
+from ros2cozmo_interfaces.msg import DetectionBox, DetectionBoxes
 from cv_bridge import CvBridge
 
 import cv2
@@ -15,7 +15,7 @@ class FaceDetectSubscriber(Node):
 
     def __init__(self):
         super().__init__('minimal_subscriber')
-        self.publisher_ = self.create_publisher(DetectionBox, '/face_detected', 10)
+        self.publisher_ = self.create_publisher(DetectionBoxes, '/faces_detected', 10)
         self.subscription = self.create_subscription(
             Image,
             '/cozmo/camera',
@@ -34,22 +34,24 @@ class FaceDetectSubscriber(Node):
         detection_data = results[1]
 
         if isinstance(detection_data, np.ndarray):
-            xy_top_l_corner = detection_data[0,:2]
-            d_box_width_height = detection_data[0,2:4]
-            confidence = detection_data[0,-1]
 
-            # self.get_logger().info(f"Top left corner X:{xy_top_l_corner[0]}, Y:{xy_top_l_corner[1]}")
-            # self.get_logger().info(f"Detection box  W:{d_box_width_height[0]}, H:{d_box_width_height[1]}")
-            # self.get_logger().info(f"Score {confidence * 100}%\n")
+            detection_boxes_msg = DetectionBoxes()
+            
+            for detection in results[1]:
+                xy_top_l_corner = detection[:2]
+                d_box_width_height = detection[2:4]
+                confidence = detection[-1]
+            
+                detection_box = DetectionBox()
+                detection_box.confidence = int(confidence*100)
+                detection_box.top_left_corner.x = float(xy_top_l_corner[0])
+                detection_box.top_left_corner.y = float(xy_top_l_corner[1])
+                detection_box.width = int(d_box_width_height[0])
+                detection_box.height = int(d_box_width_height[1])
 
-            detection_box_msg = DetectionBox()
-            detection_box_msg.confidence = int(confidence*100)
-            detection_box_msg.top_left_corner.x = float(xy_top_l_corner[0])
-            detection_box_msg.top_left_corner.y = float(xy_top_l_corner[1])
-            detection_box_msg.width = int(d_box_width_height[0])
-            detection_box_msg.height = int(d_box_width_height[1])
+                detection_boxes_msg.detection_boxes.append(detection_box)
 
-            self.publisher_.publish(detection_box_msg)
+            self.publisher_.publish(detection_boxes_msg)
 
 def main(args=None):
     rclpy.init(args=args)
