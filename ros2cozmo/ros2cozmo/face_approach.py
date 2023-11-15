@@ -19,8 +19,6 @@ class FaceApproachNode(Node):
         self.enable_srv = self.create_service(Empty, "enable", self.enable_callback)
         self.disable_srv = self.create_service(Empty, "disable", self.disable_callback)
 
-        self.subscription  # prevent unused variable warning
-
     def enable_callback(self, request, response):
         self.enabled = True
         print("Enable called")
@@ -35,7 +33,9 @@ class FaceApproachNode(Node):
         twist_msg = Twist()
         # 8925 = 85*105 (place holder)
 
-        if ((msg.width * msg.height) < 8925) and self.enabled:
+        box_area = msg.width * msg.height
+
+        if (0 < box_area) and (box_area < 8925) and self.enabled and :
             # 0.4 = placeholder speed
             twist_msg.linear.x = 0.4
             self.cmd_vel_pub.publish(twist_msg)

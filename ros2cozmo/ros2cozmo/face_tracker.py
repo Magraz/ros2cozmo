@@ -22,7 +22,7 @@ class FaceTrackerNode(Node):
         self.camera_height = 240  # Cozmo camera height
         self.centering_threshold = 0.3  # Acceptable error in centering
         self.constant_angular_speed = 0.2  # Constant speed for rotation
-        self.subscription  # prevent unused variable warning
+        self.enabled = False
 
     def enable_callback(self, request, response):
         self.enabled = True
@@ -36,7 +36,8 @@ class FaceTrackerNode(Node):
 
     def track_face(self, msg):
         twist_msg = Twist()
-        if self.enabled:
+        box_area = msg.width * msg.height
+        if self.enabled and (box_area > 0):
             # Calculate center of the face
             center_x = msg.top_left_corner.x + msg.width / 2
             print(f"Center X: ({center_x})")

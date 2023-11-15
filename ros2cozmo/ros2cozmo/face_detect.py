@@ -21,7 +21,6 @@ class FaceDetectNode(Node):
         self.subscription = self.create_subscription(
             Image, "/cozmo/camera", self.listener_callback, 10
         )
-        self.subscription  # prevent unused variable warning
         self.detector = cv2.FaceDetectorYN.create(
             "/home/magraz/cozmo/ros2cozmo_ws/src/ros2cozmo/data/face_detection_yunet_2022mar.onnx",
             "",
