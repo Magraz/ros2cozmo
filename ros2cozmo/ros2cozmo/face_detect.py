@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import rclpy
 from rclpy.node import Node
 
@@ -9,41 +8,47 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 
-detector = cv2.FaceDetectorYN.create("/home/magraz/cozmo/cozmo_ros2_ws/src/ros2cozmo/ros2cozmo/face_detection_yunet_2022mar.onnx", "", (320, 240))
 
-class FaceDetectSubscriber(Node):
+class FaceDetectNode(Node):
+    def __init__(self, node_name):
+        super().__init__(node_name=node_name, namespace=node_name)
 
-    def __init__(self):
-        super().__init__('minimal_subscriber')
-        self.publisher_ = self.create_publisher(DetectionBoxes, '/faces_detected', 10)
+        self.faces_detected_pub = self.create_publisher(
+            DetectionBoxes, "faces_detected", 10
+        )
+        self.main_face_pub = self.create_publisher(DetectionBox, "main_face", 10)
+
         self.subscription = self.create_subscription(
-            Image,
-            '/cozmo/camera',
-            self.listener_callback,
-            10)
+            Image, "/cozmo/camera", self.listener_callback, 10
+        )
         self.subscription  # prevent unused variable warning
+        self.detector = cv2.FaceDetectorYN.create(
+            "/home/magraz/cozmo/ros2cozmo_ws/src/ros2cozmo/data/face_detection_yunet_2022mar.onnx",
+            "",
+            (320, 240),
+        )
 
     def listener_callback(self, msg):
-        """ Handle new images, coming from the robot. """
+        """Handle new images, coming from the robot."""
         bridge = CvBridge()
-        cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+        cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
         image_array = np.asarray(cv_image)
 
-        detector.setInputSize((image_array.shape[1],image_array.shape[0]))
-        results = detector.detect(image_array)
+        self.detector.setInputSize((image_array.shape[1], image_array.shape[0]))
+        results = self.detector.detect(image_array)
         detection_data = results[1]
 
         if isinstance(detection_data, np.ndarray):
-
             detection_boxes_msg = DetectionBoxes()
-            
+            main_box_msg = DetectionBox()
+
             for detection in results[1]:
                 xy_top_l_corner = detection[:2]
                 d_box_width_height = detection[2:4]
                 confidence = detection[-1]
-            
+
                 detection_box = DetectionBox()
-                detection_box.confidence = int(confidence*100)
+                detection_box.confidence = int(confidence * 100)
                 detection_box.top_left_corner.x = float(xy_top_l_corner[0])
                 detection_box.top_left_corner.y = float(xy_top_l_corner[1])
                 detection_box.width = int(d_box_width_height[0])
@@ -51,21 +56,29 @@ class FaceDetectSubscriber(Node):
 
                 detection_boxes_msg.detection_boxes.append(detection_box)
 
-            self.publisher_.publish(detection_boxes_msg)
+                # Select primary box
+                if (main_box_msg.width * main_box_msg.height) < (
+                    detection_box.width * detection_box.height
+                ):
+                    main_box_msg = detection_box
+
+            self.faces_detected_pub.publish(detection_boxes_msg)
+            self.main_face_pub.publish(main_box_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
 
-    face_detect_sub = FaceDetectSubscriber()
+    node = FaceDetectNode(node_name="face_detect")
 
-    rclpy.spin(face_detect_sub)
+    rclpy.spin(node)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    face_detect_sub.destroy_node()
+    node.destroy_node()
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
