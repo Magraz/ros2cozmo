@@ -28,7 +28,7 @@ from sensor_msgs.msg import (
     Image,
     Imu,
 )
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Bool
 
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -111,6 +111,7 @@ class Cozmo(Client):
         self._img_pub = self.node.create_publisher(Image, "camera", 1)
         self._imu_pub = self.node.create_publisher(Imu, "imu", 1)
         self._odom_pub = self.node.create_publisher(Odometry, "odom", 1)
+        self._cliff_pub = self.node.create_publisher(Bool, "cliff", 1)
         # self._tf_pub   = self.create_publisher(TFMessage, "tf", 10)
 
         self._ros2_started = True
@@ -205,10 +206,24 @@ class Cozmo(Client):
         img_msg.header.frame_id = "camera"
 
         self._img_pub.publish(img_msg)
+    
+    def _cliff_cb(self, cli, state=False):
+        """
+        Publish cliff detection.
+        """
+        # Publish only if ROS2 is started and there are subscribers
+        if not self._ros2_started or self._img_pub.get_subscription_count() == 0:
+            return
+
+        result = Bool()
+        result.data = state
+
+        self._cliff_pub.publish(result)
 
     def _start(self):
         self.add_handler(event.EvtRobotStateUpdated, self._robot_state_cb)
         self.add_handler(event.EvtNewRawCameraImage, self._image_cb)
+        self.add_handler(event.EvtCliffDetectedChange, self._cliff_cb)
 
     def _control(self, twist_msg):
         """
