@@ -32,7 +32,6 @@ class FaceApproachNode(Node):
     def approach_face(self, msg):
         twist_msg = Twist()
         # 8925 = 85*105 (place holder)
-
         ideal_box_size = 8925
         linear_x_speed = 0.4
 
