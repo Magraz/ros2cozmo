@@ -20,8 +20,10 @@ class FaceTrackerNode(Node):
 
         self.camera_width = 320  # Cozmo camera width
         self.camera_height = 240  # Cozmo camera height
-        self.centering_threshold = 0.3  # Acceptable error in centering
-        self.constant_angular_speed = 0.2  # Constant speed for rotation
+        self.centering_threshold_x = 0.3  # Acceptable error in centering body
+        self.centering_threshold_y = 0.2  # Acceptable error in centering head
+        self.constant_ang_z_speed = 0.2  # Constant speed for rotation in x
+        self.constant_lin_y_speed = 0.5  # Constant speed for rotation in y
         self.enabled = False
 
     def enable_callback(self, request, response):
@@ -40,27 +42,43 @@ class FaceTrackerNode(Node):
         if self.enabled and (box_area > 0):
             # Calculate center of the face
             center_x = msg.top_left_corner.x + msg.width / 2
-            print(f"Center X: ({center_x})")
+            center_y = msg.top_left_corner.y + msg.height / 2
 
             # Calculate error from the center of the camera's view
             error_x = (center_x - self.camera_width / 2) / (self.camera_width / 2)
+            error_y = (center_y - self.camera_height / 2) / (self.camera_height / 2)
 
-            # Check if the error is within the acceptable threshold
-            if abs(error_x) < self.centering_threshold:
-                # Face is centered, stop the robot
+            # Check if the X error is within the acceptable threshold
+            if abs(error_x) < self.centering_threshold_x:
+                # Face is centered
                 twist_msg.angular.z = 0.0
-                print("Center!")
             else:
                 # Determine the direction of rotation
+                angular_speed = 0
                 if error_x > 0:
-                    angular_speed = -self.constant_angular_speed
+                    angular_speed = -self.constant_ang_z_speed
                 else:
-                    angular_speed = self.constant_angular_speed
+                    angular_speed = self.constant_ang_z_speed
 
                 # Set the speed
                 twist_msg.angular.z = angular_speed
 
-            # Publish the movement command
+            # Check if the Y error is within the acceptable threshold
+            if abs(error_y) < self.centering_threshold_y:
+                # Face is centered
+                twist_msg.linear.y = 0.0
+            else:
+                # Determine the direction of rotation
+                y_speed = 0
+                if error_y > 0:
+                    y_speed = -self.constant_lin_y_speed
+                else:
+                    y_speed = self.constant_lin_y_speed
+
+                # Set the speed for Y
+                twist_msg.linear.y = y_speed
+
+        # Publish the movement command
         self.cmd_vel_pub.publish(twist_msg)
 
 

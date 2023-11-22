@@ -206,7 +206,7 @@ class Cozmo(Client):
         img_msg.header.frame_id = "camera"
 
         self._img_pub.publish(img_msg)
-    
+
     def _cliff_cb(self, cli, state=False):
         """
         Publish cliff detection.

@@ -33,12 +33,16 @@ class FaceApproachNode(Node):
         twist_msg = Twist()
         # 8925 = 85*105 (place holder)
 
+        ideal_box_size = 8925
+        linear_x_speed = 0.4
+
         box_area = msg.width * msg.height
 
-        if (0 < box_area) and (box_area < 8925) and self.enabled and :
-            # 0.4 = placeholder speed
-            twist_msg.linear.x = 0.4
-            self.cmd_vel_pub.publish(twist_msg)
+        if self.enabled and (box_area > 0):
+            if box_area < ideal_box_size * 0.90:
+                twist_msg.linear.x = linear_x_speed
+            elif ideal_box_size * 1.20 < box_area:
+                twist_msg.linear.x = -linear_x_speed
 
         self.cmd_vel_pub.publish(twist_msg)
 
